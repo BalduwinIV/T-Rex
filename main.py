@@ -1,5 +1,3 @@
-import os
-import sys
 import random
 import pygame
 
@@ -8,10 +6,6 @@ pygame.init()
 SIZE = WIDTH, HEIGHT = 1200, 300
 screen = pygame.display.set_mode(SIZE)
 clock = pygame.time.Clock()
-FPS = 60
-HI = [pygame.image.load("sprites/highscore/letter_h.png"), pygame.image.load("sprites/highscore/letter_i.png")]
-with open('highscore.txt', 'r') as f:
-    highscore = int(f.read())
 
 
 def init_numbers():
@@ -69,47 +63,69 @@ def show_score(score):
 
 
 class TRex(pygame.sprite.Sprite):  # player class
-    def __init__(self, pos):
-        pygame.sprite.Sprite.__init__(self)
+    def __init__(self, pos, group):
+        super().__init__(group)
         self.x_coord, self.y_coord = pos
         self.width = 88
         self.height = 94
         self.current_animation = rex_run
         self.animation_counter = 0
+        self.image = self.current_animation[self.animation_counter]
         self.rect = self.current_animation[self.animation_counter].get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
         self.rect.x = self.x_coord
         self.rect.y = self.y_coord
         self.timer = 0
-        self.is_jump = False  # TODO
+        self.is_jump = False
+        self.jump_vel = 0
 
     def update(self):
-        screen.blit(self.current_animation[self.animation_counter], (self.x_coord, self.y_coord))
-        self.timer += 1  # delay between animations
-        if self.timer >= 5:
-            self.animation_counter += 1
-            if self.animation_counter >= 2:
+        if self.is_jump:
+            if self.jump_vel <= 18:
+                self.y_coord += self.jump_vel
+                self.rect.y += self.jump_vel
+                self.jump_vel += 1
+            else:
+                self.is_jump = False
+                self.current_animation = rex_run
                 self.animation_counter = 0
-            self.timer = 0
+                self.image = self.current_animation[self.animation_counter]
+        else:
+            self.timer += 1  # delay between animations
+            if self.timer >= 5:
+                self.animation_counter += 1
+                if self.animation_counter >= 2:
+                    self.animation_counter = 0
+                self.timer = 0
+                self.image = self.current_animation[self.animation_counter]
 
     def is_collided_with(self, sprite):
-        return self.rect.colliderect(sprite.rect)
+        if pygame.sprite.collide_mask(self, sprite):
+            return True
+        return False
 
     def jump(self):
-        self.is_jump = True
-        self.current_animation = pygame.image.load("sprites/rex_jump.png")
-        self.width = 118
-        self.height = 60
-        self.rect = self.current_animation.get_rect()
-        self.rect.x = self.x_coord
-        self.rect.y = self.y_coord
+        if not self.is_jump:
+            self.is_jump = True
+            self.jump_vel = -18
+            self.current_animation = pygame.image.load("sprites/rex_jump.png")
+            self.image = self.current_animation
+            self.rect = self.current_animation.get_rect()
+            self.rect.x = self.x_coord
+            self.rect.y = self.y_coord
+
+    def jump_status(self):
+        return self.is_jump
 
 
 class Barrier(pygame.sprite.Sprite):  # bush class
-    def __init__(self, x_coord, velocity):
-        pygame.sprite.Sprite.__init__(self)
+    def __init__(self, x_coord, velocity, group):
+        super().__init__(group)
         image_number = random.randint(1, 6)  # choosing random bush
         self.barrier_image = pygame.image.load(f'sprites/barriers/{image_number}.png')
+        self.image = self.barrier_image
         self.rect = self.barrier_image.get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
         if image_number == 1 or image_number == 2 or image_number == 3:  # different bushes - different sizes
             self.y_coord = 200
         else:
@@ -140,7 +156,6 @@ class Barrier(pygame.sprite.Sprite):  # bush class
     def update(self):
         self.x_coord += self.velocity
         self.rect.x = self.x_coord
-        screen.blit(self.barrier_image, (self.x_coord, self.y_coord))
 
     def get_x(self):
         return self.x_coord
@@ -148,30 +163,42 @@ class Barrier(pygame.sprite.Sprite):  # bush class
     def get_rect(self):
         return [self.x_coord, self.y_coord, self.width, self.height]
 
+    def change_velocity(self, velocity):
+        self.velocity = velocity
 
-class Floor:  # road class
-    def __init__(self, pos, velocity):
+
+class Floor(pygame.sprite.Sprite):  # road class
+    def __init__(self, pos, velocity, group):
+        super().__init__(group)
         self.image = pygame.image.load("sprites/floor.png")
         self.x_coord, self.y_coord = pos
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = self.x_coord, self.y_coord
         self.velocity = velocity
 
     def update(self):
         self.x_coord += self.velocity
-        screen.blit(self.image, (self.x_coord, self.y_coord))
+        self.rect.x += self.velocity
 
     def get_x(self):
         return self.x_coord
 
+    def change_velocity(self, velocity):
+        self.velocity = velocity
 
-class Cloud:
-    def __init__(self, pos, velocity):
+
+class Cloud(pygame.sprite.Sprite):
+    def __init__(self, pos, velocity, group):
+        super().__init__(group)
         self.image = pygame.image.load("sprites/cloud.png")
         self.x_coord, self.y_coord = pos
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = self.x_coord, self.y_coord
         self.velocity = velocity
 
     def update(self):
         self.x_coord += self.velocity
-        screen.blit(self.image, (self.x_coord, self.y_coord))
+        self.rect.x += self.velocity
 
     def get_x(self):
         return self.x_coord
@@ -190,71 +217,191 @@ def set_highscore(score):
         f.write(str(score))
 
 
-rex_startscreen = pygame.image.load("sprites/rex_startscreen.png")
+def start_screen():
+    # Sprites
+    # ------------------------------------------------------------------------------------------------------------------
+    floor = pygame.image.load("sprites/floor.png")
+    current_animation = rex_run
+    rex = rex_jump
+    # ------------------------------------------------------------------------------------------------------------------
+    # Variables
+    # ------------------------------------------------------------------------------------------------------------------
+    running = True
+    is_exit = False
+    timer = 0
+    animation_counter = 0
+    rect_x = 100
+    rect_vel = 0
+    rex_x = 0
+    rex_y = 176
+    rex_vel = 0
+    open_space = False
+    is_jump = False
+    jump_var = -18
+    # ------------------------------------------------------------------------------------------------------------------
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                is_exit = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == 273 or event.key == 32:
+                    is_jump = True
+                    jump_var = -18
+        if is_jump:
+            if jump_var <= 18:
+                rex_y += jump_var
+                jump_var += 1
+            else:
+                is_jump = False
+                open_space = True
+        if open_space:
+            rex_vel = 1
+            rect_vel = 20
+        # Animation
+        # --------------------------------------------------------------------------------------------------------------
+        timer += 1
+        if timer >= 5:
+            animation_counter += 1
+            if animation_counter >= 2:
+                animation_counter = 0
+            timer = 0
+        # --------------------------------------------------------------------------------------------------------------
+        # Drawing
+        # --------------------------------------------------------------------------------------------------------------
+        screen.fill((255, 255, 255))
+        screen.blit(floor, (0, 250))
+        pygame.draw.rect(screen, (255, 255, 255), (rect_x, 200, 1200, 200))
+        if not open_space:
+            screen.blit(rex, (rex_x, rex_y))
+        else:
+            screen.blit(current_animation[animation_counter], (rex_x, rex_y))
+        # --------------------------------------------------------------------------------------------------------------
+        # Moving TRex
+        # --------------------------------------------------------------------------------------------------------------
+        if rex_x < 50:
+            rex_x += rex_vel
+        else:
+            running = False
+        # --------------------------------------------------------------------------------------------------------------
+        # Moving map
+        # --------------------------------------------------------------------------------------------------------------
+        rect_x += rect_vel
+        # --------------------------------------------------------------------------------------------------------------
+        pygame.display.flip()
+        clock.tick(FPS)
+    if is_exit:
+        pygame.quit()
+
+
+# Sprites
+# ----------------------------------------------------------------------------------------------------------------------
+FPS = 60
+HI = [pygame.image.load("sprites/highscore/letter_h.png"), pygame.image.load("sprites/highscore/letter_i.png")]
 rex_run = [pygame.image.load("sprites/rex_run_1.png"), pygame.image.load("sprites/rex_run_2.png")]
+rex_down = [pygame.image.load("sprites/rex_down_1.png"), pygame.image.load("sprites/rex_down_2.png")]
+rex_jump = pygame.image.load("sprites/rex_jump.png")
 game_over = pygame.image.load("sprites/gameover.png")
 restart_button = pygame.image.load("sprites/restart_button.png")
-main_velocity = -10  # the whole map velocity
-player = TRex((50, 176))  # 176
-bush1 = Barrier(1300, main_velocity)
-bush2 = Barrier(2000, main_velocity)  # initializing 2 bushes to avoid free spaces
-main_floor = Floor((0, 250), main_velocity)
-reserve_floor = Floor((2400, 250), main_velocity)
-cloud_speed = -1
-cloud1 = Cloud((random.randint(100, 1000), random.randint(30, 80)), cloud_speed)
-cloud2 = Cloud((random.randint(600, 1600), random.randint(30, 80)), cloud_speed)
-cloud3 = Cloud((random.randint(1000, 2000), random.randint(30, 80)), cloud_speed)
-cloud4 = Cloud((random.randint(1500, 2500), random.randint(30, 80)), cloud_speed)
 highscore_numbers = init_highscore_numbers()
 numbers = init_numbers()
+# ----------------------------------------------------------------------------------------------------------------------
+# Variables
+# ----------------------------------------------------------------------------------------------------------------------
+with open('highscore.txt', 'r') as f:
+    highscore = int(f.read())
+
+main_velocity = -8  # the whole map velocity
 score = 0
 timer = 0
+cloud_speed = -1
 running = True
+# ----------------------------------------------------------------------------------------------------------------------
+# Class objects
+# ----------------------------------------------------------------------------------------------------------------------
+foreground = pygame.sprite.Group()
+background = pygame.sprite.Group()
+
+player = TRex((50, 176), foreground)
+bush1 = Barrier(1300, main_velocity, foreground)
+bush2 = Barrier(2000, main_velocity, foreground)  # initializing 2 bushes to avoid free spaces
+main_floor = Floor((0, 250), main_velocity, background)
+reserve_floor = Floor((2400, 250), main_velocity, background)  # same
+cloud1 = Cloud((random.randint(100, 1000), random.randint(30, 80)), cloud_speed, background)
+cloud2 = Cloud((random.randint(600, 1600), random.randint(30, 80)), cloud_speed, background)
+cloud3 = Cloud((random.randint(1000, 2000), random.randint(30, 80)), cloud_speed, background)
+cloud4 = Cloud((random.randint(1500, 2500), random.randint(30, 80)), cloud_speed, background)
+# ----------------------------------------------------------------------------------------------------------------------
+start_screen()
+
 while running:
-    screen.fill((255, 255, 255))
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == 32 or event.key == 273:
+                player.jump()
 
-    cloud1.update()
-    cloud2.update()
-    cloud3.update()
-    cloud4.update()
-    if cloud1.get_x() < -92:
-        cloud1 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed)
-    if cloud2.get_x() < -92:
-        cloud2 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed)
-    if cloud3.get_x() < -92:
-        cloud3 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed)
-    if cloud4.get_x() < -92:
-        cloud4 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed)
-
+    # Updating score
+    # ------------------------------------------------------------------------------------------------------------------
     timer += 1
     if timer >= 5:
         score += 1
         if score > highscore:
             highscore = score
         timer = 0
-    show_score(score)
-    main_floor.update()
-    reserve_floor.update()
-    bush1.update()
-    bush2.update()
-    if bush1.get_x() < -50:
-        bush1 = Barrier(random.randint(1200, 1800), main_velocity)
-    if bush2.get_x() < -50:
-        bush2 = Barrier(random.randint(1200, 1800), main_velocity)
+
+        # Updating velocity
+        # ---------------------------------------------------------------------------------------------------------------
+        if score % 100 == 0 and score <= 500:
+            main_velocity -= 1
+            bush1.change_velocity(main_velocity)
+            bush2.change_velocity(main_velocity)
+            main_floor.change_velocity(main_velocity)
+            reserve_floor.change_velocity(main_velocity)
+        # --------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    # Spawning clouds
+    # ------------------------------------------------------------------------------------------------------------------
+    if cloud1.get_x() < -92:
+        foreground.remove(cloud1)
+        cloud1 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, foreground)
+    if cloud2.get_x() < -92:
+        foreground.remove(cloud2)
+        cloud2 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, foreground)
+    if cloud3.get_x() < -92:
+        foreground.remove(cloud3)
+        cloud3 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, foreground)
+    if cloud4.get_x() < -92:
+        foreground.remove(cloud4)
+        cloud4 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, foreground)
+    # ------------------------------------------------------------------------------------------------------------------
+    # Spawning bushes
+    # ------------------------------------------------------------------------------------------------------------------
+    if bush1.get_x() < -150:
+        foreground.remove(bush1)
+        bush1 = Barrier(random.randint(1200, 1400), main_velocity, foreground)
+    if bush2.get_x() < -150:
+        foreground.remove(bush2)
+        bush2 = Barrier(random.randint(1200, 1400), main_velocity, foreground)
+    # ------------------------------------------------------------------------------------------------------------------
+    # Spawning floor
+    # ------------------------------------------------------------------------------------------------------------------
     if main_floor.get_x() < -2400:
-        main_floor = Floor((2400, 250), main_velocity)
+        background.remove(main_floor)
+        main_floor = Floor((2400, 250), main_velocity, background)
     if reserve_floor.get_x() < -2400:
-        reserve_floor = Floor((2400, 250), main_velocity)
-    player.update()
-    if pygame.sprite.collide_rect(player, bush1) or pygame.sprite.collide_rect(player, bush2):
+        background.remove(reserve_floor)
+        reserve_floor = Floor((2400, 250), main_velocity, background)
+    # ------------------------------------------------------------------------------------------------------------------
+    # Checking collision
+    # ------------------------------------------------------------------------------------------------------------------
+    if player.is_collided_with(bush1) or player.is_collided_with(bush2):
+        # Updating highscore
+        # --------------------------------------------------------------------------------------------------------------
         if score >= highscore:
             set_highscore(score)
-        screen.blit(game_over, (410, 79))
-        screen.blit(restart_button, (564, 136))
-        pygame.display.flip()
+        # --------------------------------------------------------------------------------------------------------------
         is_showing = True
         while is_showing:
             for event in pygame.event.get():
@@ -266,15 +413,57 @@ while running:
                 if event.type == pygame.KEYDOWN:
                     if event.key == 32 or event.key == 273 or event.key == 274:
                         is_showing = False
-        main_velocity = -10  # the whole map velocity
-        player = TRex((50, 176))  # 176
-        bush1 = Barrier(1300, main_velocity)
-        bush2 = Barrier(2000, main_velocity)  # initializing 2 bushes to avoid free spaces
-        main_floor = Floor((0, 250), main_velocity)
-        reserve_floor = Floor((2400, 250), main_velocity)
+            # Drawing
+            # ----------------------------------------------------------------------------------------------------------
+            background.draw(screen)
+            foreground.draw(screen)
+            screen.blit(game_over, (410, 79))
+            screen.blit(restart_button, (564, 136))
+            # ----------------------------------------------------------------------------------------------------------
+            pygame.display.flip()
+        # Updating variables
+        # --------------------------------------------------------------------------------------------------------------
+        main_velocity = -8  # the whole map velocity
         score = 0
         timer = 0
-        print('collision')
+        # --------------------------------------------------------------------------------------------------------------
+        # Removing objects from groups
+        # --------------------------------------------------------------------------------------------------------------
+        foreground.remove(player)
+        foreground.remove(bush1)
+        foreground.remove(bush2)
+        # --------------------------------------------------------------------------------------------------------------
+        # Initializing new objects
+        # --------------------------------------------------------------------------------------------------------------
+        player = TRex((50, 176), foreground)
+        bush1 = Barrier(1300, main_velocity, foreground)
+        bush2 = Barrier(2000, main_velocity, foreground)
+        background.remove(main_floor)
+        background.remove(reserve_floor)
+        main_floor = Floor((0, 250), main_velocity, background)
+        reserve_floor = Floor((2400, 250), main_velocity, background)
+        # --------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    # Updating positions
+    # ------------------------------------------------------------------------------------------------------------------
+    cloud1.update()
+    cloud2.update()
+    cloud3.update()
+    cloud4.update()
+    main_floor.update()
+    reserve_floor.update()
+    bush1.update()
+    bush2.update()
+    player.update()
+    # ------------------------------------------------------------------------------------------------------------------
+    # Drawing
+    # ------------------------------------------------------------------------------------------------------------------
+    screen.fill((255, 255, 255))
+    show_score(score)
+    background.draw(screen)
+    foreground.draw(screen)
+    # ------------------------------------------------------------------------------------------------------------------
     pygame.display.flip()
     clock.tick(FPS)
+
 pygame.quit()
