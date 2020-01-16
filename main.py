@@ -37,29 +37,71 @@ def init_highscore_numbers():
 
 
 def show_score(score):
-    first = score // 10000
-    second = (score // 1000) % 10
-    third = (score // 100) % 10
-    forth = (score // 10) % 10
-    fifth = score % 10
-    screen.blit(numbers[first], (WIDTH - 100, 10))
-    screen.blit(numbers[second], (WIDTH - 80, 10))
-    screen.blit(numbers[third], (WIDTH - 60, 10))
-    screen.blit(numbers[forth], (WIDTH - 40, 10))
-    screen.blit(numbers[fifth], (WIDTH - 20, 10))
+    # Checkpoint effect
+    # ------------------------------------------------------------------------------------------------------------------
+    if score % 100 <= 20 and score > 0:
+        if (score % 100 > 0 and score % 100 <= 5) or (score % 100 > 10 and score % 100 <= 15):
+            first = score // 10000
+            second = (score // 1000) % 10
+            third = (score // 100) % 10
+            forth = 0
+            fifth = 0
+            screen.blit(numbers[first], (WIDTH - 100, 10))
+            screen.blit(numbers[second], (WIDTH - 80, 10))
+            screen.blit(numbers[third], (WIDTH - 60, 10))
+            screen.blit(numbers[forth], (WIDTH - 40, 10))
+            screen.blit(numbers[fifth], (WIDTH - 20, 10))
 
-    first = highscore // 10000
-    second = (highscore // 1000) % 10
-    third = (highscore // 100) % 10
-    forth = (highscore // 10) % 10
-    fifth = highscore % 10
-    screen.blit(HI[0], (WIDTH - 270, 10))
-    screen.blit(HI[1], (WIDTH - 250, 10))
-    screen.blit(highscore_numbers[first], (WIDTH - 220, 10))
-    screen.blit(highscore_numbers[second], (WIDTH - 200, 10))
-    screen.blit(highscore_numbers[third], (WIDTH - 180, 10))
-    screen.blit(highscore_numbers[forth], (WIDTH - 160, 10))
-    screen.blit(highscore_numbers[fifth], (WIDTH - 140, 10))
+            first = highscore // 10000
+            second = (highscore // 1000) % 10
+            third = (highscore // 100) % 10
+            forth = (highscore // 10) % 10
+            fifth = highscore % 10
+            screen.blit(HI[0], (WIDTH - 270, 10))
+            screen.blit(HI[1], (WIDTH - 250, 10))
+            screen.blit(highscore_numbers[first], (WIDTH - 220, 10))
+            screen.blit(highscore_numbers[second], (WIDTH - 200, 10))
+            screen.blit(highscore_numbers[third], (WIDTH - 180, 10))
+            screen.blit(highscore_numbers[forth], (WIDTH - 160, 10))
+            screen.blit(highscore_numbers[fifth], (WIDTH - 140, 10))
+        else:
+            first = highscore // 10000
+            second = (highscore // 1000) % 10
+            third = (highscore // 100) % 10
+            forth = (highscore // 10) % 10
+            fifth = highscore % 10
+            screen.blit(HI[0], (WIDTH - 270, 10))
+            screen.blit(HI[1], (WIDTH - 250, 10))
+            screen.blit(highscore_numbers[first], (WIDTH - 220, 10))
+            screen.blit(highscore_numbers[second], (WIDTH - 200, 10))
+            screen.blit(highscore_numbers[third], (WIDTH - 180, 10))
+            screen.blit(highscore_numbers[forth], (WIDTH - 160, 10))
+            screen.blit(highscore_numbers[fifth], (WIDTH - 140, 10))
+    # ------------------------------------------------------------------------------------------------------------------
+    else:
+        first = score // 10000
+        second = (score // 1000) % 10
+        third = (score // 100) % 10
+        forth = (score // 10) % 10
+        fifth = score % 10
+        screen.blit(numbers[first], (WIDTH - 100, 10))
+        screen.blit(numbers[second], (WIDTH - 80, 10))
+        screen.blit(numbers[third], (WIDTH - 60, 10))
+        screen.blit(numbers[forth], (WIDTH - 40, 10))
+        screen.blit(numbers[fifth], (WIDTH - 20, 10))
+
+        first = highscore // 10000
+        second = (highscore // 1000) % 10
+        third = (highscore // 100) % 10
+        forth = (highscore // 10) % 10
+        fifth = highscore % 10
+        screen.blit(HI[0], (WIDTH - 270, 10))
+        screen.blit(HI[1], (WIDTH - 250, 10))
+        screen.blit(highscore_numbers[first], (WIDTH - 220, 10))
+        screen.blit(highscore_numbers[second], (WIDTH - 200, 10))
+        screen.blit(highscore_numbers[third], (WIDTH - 180, 10))
+        screen.blit(highscore_numbers[forth], (WIDTH - 160, 10))
+        screen.blit(highscore_numbers[fifth], (WIDTH - 140, 10))
 
 
 class TRex(pygame.sprite.Sprite):  # player class
@@ -108,7 +150,7 @@ class TRex(pygame.sprite.Sprite):  # player class
         if not self.is_jump:
             self.is_jump = True
             self.jump_vel = -18
-            self.current_animation = pygame.image.load("sprites/rex_jump.png")
+            self.current_animation = rex_jump
             self.image = self.current_animation
             self.rect = self.current_animation.get_rect()
             self.rect.x = self.x_coord
@@ -122,7 +164,7 @@ class Barrier(pygame.sprite.Sprite):  # bush class
     def __init__(self, x_coord, velocity, group):
         super().__init__(group)
         image_number = random.randint(1, 6)  # choosing random bush
-        self.barrier_image = pygame.image.load(f'sprites/barriers/{image_number}.png')
+        self.barrier_image = barriers[image_number - 1]
         self.image = self.barrier_image
         self.rect = self.barrier_image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
@@ -167,10 +209,40 @@ class Barrier(pygame.sprite.Sprite):  # bush class
         self.velocity = velocity
 
 
+class FlyEnemy(pygame.sprite.Sprite):
+    def __init__(self, x_coord, velocity, group):
+        super().__init__(group)
+        self.animation = enemy
+        self.animation_counter = 0
+        self.image = self.animation[self.animation_counter]
+        self.rect = self.image.get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
+        self.rect.y = random.choice([100, 150, 200])
+        self.rect.x = x_coord
+        self.velocity = velocity
+        self.timer = 1
+
+    def update(self):
+        self.timer += 1
+        if self.timer >= 10:
+            self.animation_counter += 1
+            if self.animation_counter >= 2:
+                self.animation_counter = 0
+            self.image = self.animation[self.animation_counter]
+            self.timer = 1
+        self.rect.x += self.velocity
+
+    def get_x(self):
+        return self.rect.x
+
+    def change_velocity(self, velocity):
+        self.velocity = velocity
+
+
 class Floor(pygame.sprite.Sprite):  # road class
     def __init__(self, pos, velocity, group):
         super().__init__(group)
-        self.image = pygame.image.load("sprites/floor.png")
+        self.image = floor
         self.x_coord, self.y_coord = pos
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = self.x_coord, self.y_coord
@@ -190,7 +262,7 @@ class Floor(pygame.sprite.Sprite):  # road class
 class Cloud(pygame.sprite.Sprite):
     def __init__(self, pos, velocity, group):
         super().__init__(group)
-        self.image = pygame.image.load("sprites/cloud.png")
+        self.image = cloud
         self.x_coord, self.y_coord = pos
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = self.x_coord, self.y_coord
@@ -220,7 +292,6 @@ def set_highscore(score):
 def start_screen():
     # Sprites
     # ------------------------------------------------------------------------------------------------------------------
-    floor = pygame.image.load("sprites/floor.png")
     current_animation = rex_run
     rex = rex_jump
     # ------------------------------------------------------------------------------------------------------------------
@@ -294,6 +365,12 @@ def start_screen():
         pygame.quit()
 
 
+# Sound effects
+# ----------------------------------------------------------------------------------------------------------------------
+check_point_sound = pygame.mixer.Sound("sounds/checkPoint.wav")
+die_sound = pygame.mixer.Sound("sounds/die.wav")
+jump_sound = pygame.mixer.Sound("sounds/jump.wav")
+# ----------------------------------------------------------------------------------------------------------------------
 # Sprites
 # ----------------------------------------------------------------------------------------------------------------------
 FPS = 60
@@ -301,6 +378,12 @@ HI = [pygame.image.load("sprites/highscore/letter_h.png"), pygame.image.load("sp
 rex_run = [pygame.image.load("sprites/rex_run_1.png"), pygame.image.load("sprites/rex_run_2.png")]
 rex_down = [pygame.image.load("sprites/rex_down_1.png"), pygame.image.load("sprites/rex_down_2.png")]
 rex_jump = pygame.image.load("sprites/rex_jump.png")
+floor = pygame.image.load("sprites/floor.png")
+cloud = pygame.image.load("sprites/cloud.png")
+barriers = [pygame.image.load('sprites/barriers/1.png'), pygame.image.load('sprites/barriers/2.png'),
+            pygame.image.load('sprites/barriers/3.png'), pygame.image.load('sprites/barriers/4.png'),
+            pygame.image.load('sprites/barriers/5.png'), pygame.image.load('sprites/barriers/6.png')]
+enemy = [pygame.image.load('sprites/barriers/enemy_1.png'), pygame.image.load('sprites/barriers/enemy_2.png')]
 game_over = pygame.image.load("sprites/gameover.png")
 restart_button = pygame.image.load("sprites/restart_button.png")
 highscore_numbers = init_highscore_numbers()
@@ -311,7 +394,7 @@ numbers = init_numbers()
 with open('highscore.txt', 'r') as f:
     highscore = int(f.read())
 
-main_velocity = -8  # the whole map velocity
+main_velocity = -10  # the whole map velocity
 score = 0
 timer = 0
 cloud_speed = -1
@@ -340,6 +423,7 @@ while running:
             running = False
         if event.type == pygame.KEYDOWN:
             if event.key == 32 or event.key == 273:
+                jump_sound.play()
                 player.jump()
 
     # Updating score
@@ -349,10 +433,15 @@ while running:
         score += 1
         if score > highscore:
             highscore = score
+        # Play sound
+        # --------------------------------------------------------------------------------------------------------------
+        if score % 100 == 0 and score > 0:
+            check_point_sound.play()
+        # --------------------------------------------------------------------------------------------------------------
         timer = 0
 
         # Updating velocity
-        # ---------------------------------------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
         if score % 100 == 0 and score <= 500:
             main_velocity -= 1
             bush1.change_velocity(main_velocity)
@@ -364,26 +453,40 @@ while running:
     # Spawning clouds
     # ------------------------------------------------------------------------------------------------------------------
     if cloud1.get_x() < -92:
-        foreground.remove(cloud1)
-        cloud1 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, foreground)
+        background.remove(cloud1)
+        cloud1 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, background)
     if cloud2.get_x() < -92:
-        foreground.remove(cloud2)
-        cloud2 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, foreground)
+        background.remove(cloud2)
+        cloud2 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, background)
     if cloud3.get_x() < -92:
-        foreground.remove(cloud3)
-        cloud3 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, foreground)
+        background.remove(cloud3)
+        cloud3 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, background)
     if cloud4.get_x() < -92:
-        foreground.remove(cloud4)
-        cloud4 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, foreground)
+        background.remove(cloud4)
+        cloud4 = Cloud((random.randint(1200, 1800), random.randint(30, 70)), cloud_speed, background)
     # ------------------------------------------------------------------------------------------------------------------
     # Spawning bushes
     # ------------------------------------------------------------------------------------------------------------------
     if bush1.get_x() < -150:
         foreground.remove(bush1)
-        bush1 = Barrier(random.randint(1200, 1400), main_velocity, foreground)
+        if score > 200:
+            random_number = random.randint(1, 10)
+            if random_number == 7:  # happy number
+                bush1 = FlyEnemy(random.randint(1200, 1400), main_velocity, foreground)
+            else:
+                bush1 = Barrier(random.randint(1200, 1400), main_velocity, foreground)
+        else:
+            bush1 = Barrier(random.randint(1200, 1400), main_velocity, foreground)
     if bush2.get_x() < -150:
         foreground.remove(bush2)
-        bush2 = Barrier(random.randint(1200, 1400), main_velocity, foreground)
+        if score > 200:
+            random_number = random.randint(1, 10)
+            if random_number == 7:  # happy number
+                bush2 = FlyEnemy(random.randint(1200, 1400), main_velocity, foreground)
+            else:
+                bush2 = Barrier(random.randint(1200, 1400), main_velocity, foreground)
+        else:
+            bush2 = Barrier(random.randint(1200, 1400), main_velocity, foreground)
     # ------------------------------------------------------------------------------------------------------------------
     # Spawning floor
     # ------------------------------------------------------------------------------------------------------------------
@@ -397,6 +500,10 @@ while running:
     # Checking collision
     # ------------------------------------------------------------------------------------------------------------------
     if player.is_collided_with(bush1) or player.is_collided_with(bush2):
+        # Sound playing
+        # --------------------------------------------------------------------------------------------------------------
+        die_sound.play()
+        # --------------------------------------------------------------------------------------------------------------
         # Updating highscore
         # --------------------------------------------------------------------------------------------------------------
         if score >= highscore:
